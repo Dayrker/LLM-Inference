@@ -38,6 +38,13 @@ def parse_args(input_args=None):
         required=True,
         help="datasets selection (BBH/GPQA-diamond/MMLU-PRO).",
     )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=8,
+        required=True,
+        help="batch size (ie. 8).",
+    )
 
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda  # Set cuda devices first.

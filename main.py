@@ -8,7 +8,7 @@ from Datasets.LoadData import process_data
 from Datasets.parse_BBH import benchmark_BBH
 from Datasets.parse_MMLU import benchmark_mmlu
 # Inference
-from Inference.infer_batch import infer_batch
+from Inference.infer_batch import infer_batch, infer_batch_multiprocessing
 
 if __name__ == "__main__":
     # Get parameters first.
@@ -27,6 +27,6 @@ if __name__ == "__main__":
     content = getContent(arch=args.arch, precision=args.precision)
     with content:
         # get outputs
-        outputs = infer_batch(model, tokenizer, datasets)
+        outputs = infer_batch_multiprocessing(model, tokenizer, datasets, args.batch_size, args.cuda)
     
     # save results
