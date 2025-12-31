@@ -1,6 +1,8 @@
 from tqdm import tqdm
 # Parallel
 import torch.multiprocessing as mp
+# convert model
+from .convert_model import replace_modules
 
 # ---------------- Helper for chat template ----------------
 def toChat(tokenizer, p: str) -> str:
@@ -13,13 +15,17 @@ def toChat(tokenizer, p: str) -> str:
     )
     return chat_text
 
-def infer_batch(llm_model, tokenizer, 
-                dataset, batch_size = 8,
-                device = "cuda:0", 
-                return_queue = None):
+def infer_batch(llm_model, tokenizer, dataset, args,
+                device = "cuda:0", return_queue = None):
+    ### parse parameters needed
+    arch       = args.arch
+    precision  = args.precision
+    batch_size = args.batch_size
+    # model preprocess
     llm_model.to(device).eval()
-    dataLen = len(dataset)
+    replace_modules(llm_model, arch = arch, precision = precision)   # replace_modules必须挪到这里来，因为TE内部有局部函数/闭包，无法被spawn序列化
 
+    dataLen = len(dataset)
     outputs = []
     # ---------------- Batch inference ----------------
     for batch_start in tqdm(range(0, dataLen, batch_size), desc="Running inference", ncols=100):
@@ -61,9 +67,10 @@ def infer_batch(llm_model, tokenizer,
     return outputs
 
 
-def infer_batch_multiprocessing(llm_model, tokenizer, 
-                                dataset, batch_size = 8,
-                                device="0, 1, 2, 3"):
+def infer_batch_multiprocessing(llm_model, tokenizer, dataset, args):
+    ### parse args needed
+    device     = args.cuda
+
     dataset_len = len(dataset)
     world_size = len(device.split(","))
 
@@ -84,8 +91,7 @@ def infer_batch_multiprocessing(llm_model, tokenizer,
     for rank in range(world_size):
         p = mp.Process(
             target = infer_batch,
-            args = (llm_model, tokenizer, 
-                    data_slices[rank], batch_size,
+            args = (llm_model, tokenizer, data_slices[rank], args,
                     f"cuda:{rank}", return_queue)
         )
         p.start()
