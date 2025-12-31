@@ -5,7 +5,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 def getModel(model_dir, cuda_maps="cuda:0", dtype=torch.bfloat16):
     tokenizer = AutoTokenizer.from_pretrained(
         model_dir, 
-        padding_side='left',
+        padding_side='left',    # !! Important
         use_fast=True)
     model_ori = AutoModelForCausalLM.from_pretrained(
         model_dir,

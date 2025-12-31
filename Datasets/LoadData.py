@@ -9,7 +9,7 @@ def process_data(dataset_path):
     # prompts, labels, categories = [], [], []
     for i, ex in enumerate(examples):
         sample = {
-            "id:": i,
+            "id": i,
         }
 
         question = ex["instruction"].strip()
@@ -18,7 +18,7 @@ def process_data(dataset_path):
         category = ex.get("category") if "category" in ex else None
 
         if options: # options有的话，就跟question链接。
-            prompt = f"{question}\n\nOptions:\n{options}\n\nAnswer:"
+            prompt = f"{question}\n\n{options}\n\nAnswer:"
         else:       # 无的话选项就在question里
             prompt = f"{question}\n\nAnswer:"
 
