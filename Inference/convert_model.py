@@ -30,7 +30,7 @@ def convert_dw_modules(module):
         nn.Conv2d: dw.ConvLayer,
         nn.LayerNorm: dw.LayernormLayer,
         nn.GroupNorm: dw.GroupnormLayer,
-        nn.SiLU: dw.SiLULayer,
+        # nn.SiLU: dw.SiLULayer,  #有问题
         nn.Dropout: dw.DropoutLayer,
     }
 

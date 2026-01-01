@@ -24,6 +24,7 @@ def infer_batch(llm_model, tokenizer, dataset, args,
     # model preprocess
     llm_model.to(device).eval()
     replace_modules(llm_model, arch = arch, precision = precision)   # replace_modules必须挪到这里来，因为TE内部有局部函数/闭包，无法被spawn序列化
+    # print("llm_model aafter replace:", llm_model)
 
     dataLen = len(dataset)
     outputs = []
@@ -106,7 +107,6 @@ def infer_batch_multiprocessing(llm_model, tokenizer, dataset, args):
     all_results = sorted(all_results, key=lambda x: x["id"])
 
     print(f"🔥 已完成 {world_size}-GPU 推理.")
-    # print("all_results:", all_results)
     return all_results
 
 if __name__ == "__main__":
