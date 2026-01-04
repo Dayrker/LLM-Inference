@@ -43,7 +43,10 @@ def convert_dw_modules(module):
 
 def replace_modules(model, arch="NV", precision="baseline"):
     for name, module in model.named_children():
-        # print(f"Replacing module: {name} of type {type(module)}. mode: {mode}")
+        if name.isdigit():
+            if int(name) >= 1 and int(name) <= 30:
+                break
+        # print(f"Replacing module: {name} of module {module}. arch: {arch}")
         replace_modules(module, arch, precision)    # 递归替换&寻找
 
         if isinstance(module, nn.Linear):

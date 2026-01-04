@@ -1,6 +1,6 @@
 import re
 
-def benchmark_BBH(answer: str, label: str, category: str = None):
+def benchmark_BBH_llama(answer: str, label: str, category: str = None):
     """
     Benchmark function for evaluating BBH-style tasks across multiple categories.
     

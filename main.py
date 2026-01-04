@@ -14,8 +14,8 @@ if __name__ == "__main__":
     args = parse_args()
     same_seed(42)
 
-    # get model
-    model, tokenizer = getModel("/ssd/models/" + args.model)
+    # # get model
+    # model, tokenizer = getModel("/ssd/models/" + args.model)
 
     # get datasets
     data_dir = "/mnt/zhangchen/S3Precision/LLM-inference/Datasets/"
@@ -24,8 +24,9 @@ if __name__ == "__main__":
     content = getContent(arch=args.arch, precision=args.precision)
     with content:
         # get outputs
-        outputs = infer_batch_multiprocessing(model, tokenizer, datasets, args)
+        # outputs = infer_batch_multiprocessing(model, tokenizer, datasets, args)
+        outputs = infer_batch_multiprocessing(None, None, datasets, args)
 
     # compute metrics & save
-    metrics = compute_metrics(outputs, datasets, args.dataset)
-    save_data_to_json(metrics, f"./results/{args.arch}/{args.precision}/result_{args.dataset}.json")
+    metrics = compute_metrics(outputs, datasets, args.dataset, args.model)
+    save_data_to_json(metrics, f"./results/{args.model}/{args.arch}/{args.precision}/result_{args.dataset}.json")

@@ -1,10 +1,20 @@
 from tqdm import tqdm
-from .parse_BBH import benchmark_BBH
-from .parse_MMLU import benchmark_MMLU
+from .parse_BBH_llama import benchmark_BBH_llama
+from .parse_MMLU_llama import benchmark_MMLU_llama
+from .parse_BBH_qwen import benchmark_BBH_qwen
+from .parse_MMLU_qwen import benchmark_MMLU_qwen
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
-def compute_metrics(outputs, dataset, dataset_name):
+def compute_metrics(outputs, dataset, dataset_name, model_name):
     assert dataset_name in ["BBH", "MMLU-PRO", "GPQA-diamond"], f"Metrics for dataset \"{dataset_name}\" not implemented."
+    if "llama" in model_name:
+        benchmark_BBH = benchmark_BBH_llama
+        benchmark_MMLU = benchmark_MMLU_llama
+    elif "Qwen" in model_name:
+        benchmark_BBH = benchmark_BBH_qwen
+        benchmark_MMLU = benchmark_MMLU_qwen
+    else:
+        raise ValueError(f"not support {model_name} models.")
 
     dataLen = len(dataset)
     for i in tqdm(range(dataLen), desc="Computing metrics", ncols=100):

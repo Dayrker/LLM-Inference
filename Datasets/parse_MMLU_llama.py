@@ -1,6 +1,6 @@
 import re
 
-def benchmark_MMLU(answer: str, label: str):
+def benchmark_MMLU_llama(answer: str, label: str):
     if not answer:
         return "UNKNOWN", False
 

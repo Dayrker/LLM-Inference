@@ -1,3 +1,4 @@
+import torch
 from tqdm import tqdm
 # Parallel
 import torch.multiprocessing as mp
@@ -5,8 +6,15 @@ import torch.multiprocessing as mp
 from .convert_model import replace_modules
 
 # ---------------- Helper for chat template ----------------
-def toChat(tokenizer, p: str) -> str:
-    messages = [{"role": "user", "content": p}]
+def toChat(tokenizer, model_name, p: str) -> str:
+    if "llama" in model_name:
+        think = ""
+    elif "Qwen" in model_name:
+        think = "/nothink"
+    else:
+        raise ValueError(f"not support {model_name} models.")
+
+    messages = [{"role": "user", "content": p + think}]
 
     chat_text = tokenizer.apply_chat_template(
         messages, 
@@ -17,6 +25,9 @@ def toChat(tokenizer, p: str) -> str:
 
 def infer_batch(llm_model, tokenizer, dataset, args,
                 device = "cuda:0", return_queue = None):
+    from .LoadModel import getModel # 在mp.Process子进程中load model，速度才不会变慢，后续待查
+    llm_model, tokenizer = getModel("/ssd/models/" + args.model, cuda_maps=device)  
+
     ### parse parameters needed
     arch       = args.arch
     precision  = args.precision
@@ -24,7 +35,7 @@ def infer_batch(llm_model, tokenizer, dataset, args,
     # model preprocess
     llm_model.to(device).eval()
     replace_modules(llm_model, arch = arch, precision = precision)   # replace_modules必须挪到这里来，因为TE内部有局部函数/闭包，无法被spawn序列化
-    # print("llm_model aafter replace:", llm_model)
+    # print("llm_model after replace:", llm_model)
 
     dataLen = len(dataset)
     outputs = []
@@ -32,7 +43,7 @@ def infer_batch(llm_model, tokenizer, dataset, args,
     for batch_start in tqdm(range(0, dataLen, batch_size), desc="Running inference", ncols=100):
         # text pre-process
         batch_data = dataset[batch_start: batch_start + batch_size]
-        texts      = [toChat(tokenizer, x["prompt"]) for x in batch_data]
+        texts      = [toChat(tokenizer, args.model, x["prompt"]) for x in batch_data]
 
         # tokenize
         enc = tokenizer(
@@ -40,7 +51,7 @@ def infer_batch(llm_model, tokenizer, dataset, args,
             return_tensors="pt",
             padding=True,
             truncation=True,
-            max_length=1024,    # 截断长度，后续可指定
+            max_length=512,    # 截断长度，后续可指定
         )
         input_ids      = enc["input_ids"].to(device)
         attention_mask = enc["attention_mask"].to(device)   # [0/1, ...] -> 0/1 list (0代表mask, 1代表正常token)
@@ -50,7 +61,7 @@ def infer_batch(llm_model, tokenizer, dataset, args,
             input_ids=input_ids,
             attention_mask=attention_mask,
             pad_token_id=tokenizer.pad_token_id,
-            max_new_tokens=128,    # 生成长度，后续可指定 (alvaro -> 70 for MMLU and BBH, 130 for the rest)
+            max_new_tokens=70 if args.dataset == "GPQA-diamond" else 128,    # 生成长度，后续可指定 (alvaro -> 70 for MMLU and BBH, 130 for the rest)
         )
         promptLen = input_ids.shape[1]  # tokenizer有设置padding_side='left'，所以生成的prompt都会在input_ids最右边生成，起始点一致
         answers = tokenizer.batch_decode(out_ids[:, promptLen:], skip_special_tokens=True)
