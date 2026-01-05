@@ -2,8 +2,10 @@ import torch
 from tqdm import tqdm
 # Parallel
 import torch.multiprocessing as mp
-# convert model
+# process model
+from .LoadModel import getModel 
 from .convert_model import replace_modules
+from .help_funcs import same_seed, getContent
 
 # ---------------- Helper for chat template ----------------
 def toChat(tokenizer, model_name, p: str) -> str:
@@ -23,9 +25,10 @@ def toChat(tokenizer, model_name, p: str) -> str:
     )
     return chat_text
 
-def infer_batch(llm_model, tokenizer, dataset, args,
+def infer_batch(args, dataset, 
                 device = "cuda:0", return_queue = None):
-    from .LoadModel import getModel # 在mp.Process子进程中load model，速度才不会变慢，后续待查
+    torch.cuda.set_device(device)   # 必须在此设置，不然会有illeagel memory
+    # 在mp.Process子进程中load model，速度才不会变慢，应该是内部有定义cuda
     llm_model, tokenizer = getModel("/ssd/models/" + args.model, cuda_maps=device)  
 
     ### parse parameters needed
@@ -42,8 +45,10 @@ def infer_batch(llm_model, tokenizer, dataset, args,
     # ---------------- Batch inference ----------------
     for batch_start in tqdm(range(0, dataLen, batch_size), desc="Running inference", ncols=100):
         # text pre-process
-        batch_data = dataset[batch_start: batch_start + batch_size]
-        texts      = [toChat(tokenizer, args.model, x["prompt"]) for x in batch_data]
+        batch_data     = dataset[batch_start: batch_start + batch_size]
+        texts          = [toChat(tokenizer, args.model, x["prompt"]) for x in batch_data]
+        texts_ori_len  = len(texts)
+        texts          += [""] * (args.batch_size - texts_ori_len)  # 补全batch，不然没法TE MXFP8/NVFP4
 
         # tokenize
         enc = tokenizer(
@@ -52,22 +57,25 @@ def infer_batch(llm_model, tokenizer, dataset, args,
             padding=True,
             truncation=True,
             max_length=512,    # 截断长度，后续可指定
+            pad_to_multiple_of=32,  # 关键参数
         )
         input_ids      = enc["input_ids"].to(device)
         attention_mask = enc["attention_mask"].to(device)   # [0/1, ...] -> 0/1 list (0代表mask, 1代表正常token)
 
         # generate
-        out_ids = llm_model.generate(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            pad_token_id=tokenizer.pad_token_id,
-            max_new_tokens=70 if args.dataset == "GPQA-diamond" else 128,    # 生成长度，后续可指定 (alvaro -> 70 for MMLU and BBH, 130 for the rest)
-        )
+        content = getContent(arch=args.arch, precision=args.precision)
+        with content:
+            out_ids = llm_model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                pad_token_id=tokenizer.pad_token_id,
+                max_new_tokens=70 if args.dataset == "GPQA-diamond" else 128,    # 生成长度，后续可指定 (alvaro -> 70 for MMLU and BBH, 130 for the rest)
+            )
         promptLen = input_ids.shape[1]  # tokenizer有设置padding_side='left'，所以生成的prompt都会在input_ids最右边生成，起始点一致
         answers = tokenizer.batch_decode(out_ids[:, promptLen:], skip_special_tokens=True)
 
-        # preces output
-        for i in range(len(texts)):
+        # process output
+        for i in range(texts_ori_len):
             output = {
                 "id": batch_data[i]["id"]
             }
@@ -79,7 +87,7 @@ def infer_batch(llm_model, tokenizer, dataset, args,
     return outputs
 
 
-def infer_batch_multiprocessing(llm_model, tokenizer, dataset, args):
+def infer_batch_multiprocessing(args, dataset):
     ### parse args needed
     device     = args.cuda
 
@@ -103,7 +111,7 @@ def infer_batch_multiprocessing(llm_model, tokenizer, dataset, args):
     for rank in range(world_size):
         p = mp.Process(
             target = infer_batch,
-            args = (llm_model, tokenizer, data_slices[rank], args,
+            args = (args, data_slices[rank],
                     f"cuda:{rank}", return_queue)
         )
         p.start()

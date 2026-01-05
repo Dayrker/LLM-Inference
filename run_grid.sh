@@ -8,7 +8,7 @@
 
 
 CUDA="0,1,2,3,4,5,6,7"
-BATCH_SIZE=8
+BATCH_SIZE=32
 
 MODELS=(
   # "llama/Llama-3-8B-Instruct"
@@ -16,7 +16,7 @@ MODELS=(
 )
 ARCHS=(
   "NV"
-  "DW"
+  # "DW"
 )
 PRECISIONS=(
   "baseline"
