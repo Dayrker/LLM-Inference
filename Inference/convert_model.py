@@ -42,10 +42,14 @@ def convert_dw_modules(module):
 
 
 def replace_modules(model, arch="NV", precision="baseline"):
+    layers_len = len(list(model.named_children()))
     for name, module in model.named_children():
-        if name.isdigit():
-            if int(name) >= 1 and int(name) <= 30:
-                break
+        if name == "lm_head": continue
+
+        if name.isdigit():  # CLIP DW layers (saving huge time)
+            if int(name) >= 1 and int(name) < layers_len - 1:
+                replace_modules(module, "NV", precision)
+
         # print(f"Replacing module: {name} of module {module}. arch: {arch}")
         replace_modules(module, arch, precision)    # 递归替换&寻找
 
