@@ -49,6 +49,7 @@ def replace_modules(model, arch="NV", precision="baseline"):
         if name.isdigit():  # CLIP DW layers (saving huge time)
             if int(name) >= 1 and int(name) < layers_len - 1:
                 replace_modules(module, "NV", precision)
+                continue
 
         # print(f"Replacing module: {name} of module {module}. arch: {arch}")
         replace_modules(module, arch, precision)    # 递归替换&寻找
