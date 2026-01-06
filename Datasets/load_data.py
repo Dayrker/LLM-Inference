@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 def process_data(dataset_path):
     # ---------------- Load dataset ----------------
@@ -29,6 +30,27 @@ def process_data(dataset_path):
         dataset.append(sample)
     
     return dataset
+
+def process_ocr_data(CLIP=10**10):
+    """
+    OmniDocBench: https://github.com/opendatalab/OmniDocBench.git
+    """
+    OmniDir = Path("/mnt/zhangchen/S3Precision/LLM-inference/Datasets/OmniDocBench/")
+    omni_images_dir = (OmniDir / "demo_data" / "omnidocbench_demo" / "images").resolve()
+    omni_pred_dir   = (OmniDir / "demo_data" / "end2end").resolve()
+
+    datasets = []
+    for index, file in enumerate(omni_images_dir.iterdir()):
+        sample = {
+            "id": index
+        }
+        if file.suffix.lower() in [".jpg", ".jpeg", ".png"]:    # suffix -> 返回文件后缀名
+            sample["img_path"] = file
+            datasets.append(sample)
+    
+    sorted(datasets, key=lambda x: x["img_path"].suffix)
+    return datasets[0:CLIP]
+
 
 if __name__ == "__main__":
     Dir = "/mnt/zhangchen/S3Precision/LLM-inference/Datasets/"
